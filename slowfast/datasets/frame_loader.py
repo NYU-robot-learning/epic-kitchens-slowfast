@@ -25,9 +25,10 @@ def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0
 
 def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_fps=60):
     # Load video by loading its extracted frames
-    path_to_video = '{}/{}/rgb_frames/{}'.format(cfg.EPICKITCHENS.VISUAL_DATA_DIR,
+    path_to_video = '{}/{}/rgb_frames/{}_frames'.format(cfg.EPICKITCHENS.VISUAL_DATA_DIR,
                                                  video_record.participant,
                                                  video_record.untrimmed_video_name)
+    # img_tmpl = "{:010d}.jpg"
     img_tmpl = "frame_{:010d}.jpg"
     fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
     start_idx, end_idx = get_start_end_idx(

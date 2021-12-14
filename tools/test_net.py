@@ -42,6 +42,20 @@ def perform_test(test_loader, model, test_meter, cfg):
 
     test_meter.iter_tic()
 
+    N = len(test_loader) * cfg.TEST.BATCH_SIZE
+    NUM_VERBS = 97
+    NUM_NOUNS = 300
+    N_SHARED_FEAT = 2304
+    narration_ids = []
+    true_verbs = np.zeros(N, dtype=int) - 1
+    true_nouns = np.zeros(N, dtype=int) - 1
+    verb_probs = np.zeros((N, NUM_VERBS))
+    noun_probs = np.zeros((N, NUM_NOUNS))
+
+    verb_feats = np.zeros((N, NUM_VERBS))
+    noun_feats = np.zeros((N, NUM_NOUNS))
+    shared_feats = np.zeros((N, N_SHARED_FEAT))
+
     for cur_iter, (inputs, labels, video_idx, meta) in enumerate(test_loader):
         # Transfer the data to the current GPU device.
         if isinstance(inputs, (list,)):
@@ -87,7 +101,20 @@ def perform_test(test_loader, model, test_meter, cfg):
             test_meter.log_iter_stats(None, cur_iter)
         else:
             # Perform the forward pass.
-            preds = model(inputs)
+            preds = model(inputs, ret_extra=True)
+            n_id = meta['narration_id']
+            start_idx = cur_iter * cfg.TEST.BATCH_SIZE
+            end_idx = start_idx + len(n_id)
+
+            narration_ids += n_id
+            true_verbs[start_idx:end_idx] = labels['verb'].cpu().numpy()
+            true_nouns[start_idx:end_idx] = labels['noun'].cpu().numpy()
+            verb_probs[start_idx:end_idx] = preds[0].detach().cpu().numpy()
+            noun_probs[start_idx:end_idx] = preds[1].detach().cpu().numpy()
+
+            verb_feats[start_idx:end_idx] = preds[2].mean((1,2,3)).detach().cpu().numpy()
+            noun_feats[start_idx:end_idx] = preds[3].mean((1,2,3)).detach().cpu().numpy()
+            shared_feats[start_idx:end_idx] = preds[4].mean((1,2,3)).detach().cpu().numpy()
 
             if isinstance(labels, (dict,)):
                 # Gather all the predictions across all the devices to perform ensemble.
@@ -133,6 +160,15 @@ def perform_test(test_loader, model, test_meter, cfg):
                 test_meter.log_iter_stats(cur_iter)
 
         test_meter.iter_tic()
+
+    # save resulting data
+    data = dict(narration_ids=narration_ids,
+        true_verbs=true_verbs, true_nouns=true_nouns,
+        verb_probs=verb_probs, noun_probs=noun_probs,
+        verb_feats=verb_feats, noun_feats=noun_feats, shared_feats=shared_feats)
+    
+    with open(os.path.join(cfg.OUTPUT_DIR, 'slow_fast_results_feat.pickle'), 'wb') as f:
+        pickle.dump(data, f)
 
     # Log epoch stats and print the final testing results.
     if cfg.TEST.DATASET == 'epickitchens':

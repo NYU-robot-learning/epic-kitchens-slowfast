@@ -358,7 +358,7 @@ class SlowFast(nn.Module):
                 dropout_rate=cfg.MODEL.DROPOUT_RATE,
             )
 
-    def forward(self, x, bboxes=None):
+    def forward(self, x, bboxes=None, ret_extra=False):
         x = self.s1(x)
         x = self.s1_fuse(x)
         x = self.s2(x)
@@ -374,7 +374,7 @@ class SlowFast(nn.Module):
         if self.enable_detection:
             x = self.head(x, bboxes)
         else:
-            x = self.head(x)
+            x = self.head(x, ret_extra=ret_extra)
         return x
 
     def freeze_fn(self, freeze_mode):
@@ -564,7 +564,7 @@ class ResNet(nn.Module):
                 dropout_rate=cfg.MODEL.DROPOUT_RATE,
             )
 
-    def forward(self, x, bboxes=None):
+    def forward(self, x, bboxes=None, ret_extra=False):
         x = self.s1(x)
         x = self.s2(x)
         for pathway in range(self.num_pathways):
@@ -576,5 +576,5 @@ class ResNet(nn.Module):
         if self.enable_detection:
             x = self.head(x, bboxes)
         else:
-            x = self.head(x)
+            x = self.head(x, ret_extra=ret_extra)
         return x

@@ -126,6 +126,7 @@ class ResNetRoIHead(nn.Module):
 
         x = x.view(x.shape[0], -1)
         x = self.projection(x)
+        import ipdb; ipdb.set_trace()
         x = self.act(x)
         return x
 
@@ -196,7 +197,7 @@ class ResNetBasicHead(nn.Module):
                 "function.".format(act_func)
             )
 
-    def forward(self, inputs):
+    def forward(self, inputs, ret_extra=False):
         assert (
             len(inputs) == self.num_pathways
         ), "Input tensor does not contain {} pathway".format(self.num_pathways)
@@ -214,12 +215,15 @@ class ResNetBasicHead(nn.Module):
             x_v = self.projection_verb(x)
             x_n = self.projection_noun(x)
 
+            x_v_p = x_v.clone()
+            x_n_p = x_n.clone()
+
             # Performs fully convlutional inference.
             if not self.training:
                 x_v = self.act(x_v)
                 x_v = x_v.mean([1, 2, 3])
 
-            x_v = x_v.view(x_v.shape[0], -1)
+            x_v = x_v.view(x_v_p.shape[0], -1)
 
             # Performs fully convlutional inference.
             if not self.training:
@@ -227,6 +231,8 @@ class ResNetBasicHead(nn.Module):
                 x_n = x_n.mean([1, 2, 3])
 
             x_n = x_n.view(x_n.shape[0], -1)
+            if ret_extra:
+                return (x_v, x_n, x_v_p, x_n_p, x)
             return (x_v, x_n)
         else:
             x = self.projection(x)
